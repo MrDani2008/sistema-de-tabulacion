@@ -7,7 +7,7 @@ export async function GET(req: NextRequest) {
   const auth = await requireSession(req);
   if (!auth.ok) return errorResponse(auth.message, auth.status);
   try {
-    const data = await loadAllData();
+    const data = await loadAllData(['rondas']);
     return jsonResponse({ success: true, rondas: data.rondas });
   } catch (error: any) {
     return errorResponse(error?.message || 'Error al obtener rondas');
@@ -22,7 +22,10 @@ export async function POST(req: NextRequest) {
     if (!body.nombre) return errorResponse('Nombre es obligatorio', 400);
     if (!body.numero) return errorResponse('Número es obligatorio', 400);
 
-    const data = await loadAllData();
+    const tabsNeeded: ('rondas' | 'equipos' | 'salas' | 'debates')[] = body.generarPairings
+      ? ['rondas', 'equipos', 'salas', 'debates']
+      : ['rondas'];
+    const data = await loadAllData(tabsNeeded);
     const nueva = crearRondaBase(body.nombre, body.numero, body.fecha || new Date().toISOString());
     const rondas = [nueva, ...data.rondas];
     await syncRondas(rondas);

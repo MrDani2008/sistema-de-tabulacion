@@ -1,5 +1,5 @@
 import { generarId } from './utils';
-import { writeSheetObjects, readSheetObjects } from './googleSheets';
+import { readSheet, updateSheetRow, writeSheet, clearCache } from './sheetsService';
 import {
   Debate,
   Equipo,
@@ -18,96 +18,161 @@ function parseBoolean(value: string | boolean): boolean {
   return value === true || String(value).toLowerCase() === 'true';
 }
 
-export async function loadAllData(): Promise<TournamentData> {
-  const equiposRaw = await readSheetObjects<Equipo>('Equipos');
-  const institucionesRaw = await readSheetObjects<Institucion>('Instituciones');
-  const oradoresRaw = await readSheetObjects<Orador>('Oradores');
-  const salasRaw = await readSheetObjects<Sala>('Salas');
-  const rondasRaw = await readSheetObjects<Ronda>('Rondas');
-  const debatesRaw = await readSheetObjects<Debate>('Debates');
-  const resultadosRaw = await readSheetObjects<Resultado>('Resultados');
-  const rankingEquiposRaw = await readSheetObjects<RankingEquipo>('ClasificacionGeneral');
-  const rankingOradoresRaw = await readSheetObjects<RankingOrador>('ClasificacionOradores');
+export type TabName = 'equipos' | 'instituciones' | 'oradores' | 'salas' | 'rondas' | 'debates' | 'resultados' | 'rankingEquipos' | 'rankingOradores';
 
-  const equipos = equiposRaw.map((item) => ({
+const TAB_SHEET_MAP: Record<TabName, string> = {
+  equipos: 'Equipos',
+  instituciones: 'Instituciones',
+  oradores: 'Oradores',
+  salas: 'Salas',
+  rondas: 'Rondas',
+  debates: 'Debates',
+  resultados: 'Resultados',
+  rankingEquipos: 'ClasificacionGeneral',
+  rankingOradores: 'ClasificacionOradores'
+};
+
+export type PartialTournamentData = Partial<TournamentData> & { rondas?: Ronda[] };
+
+function parseEquipos(raw: Equipo[]): Equipo[] {
+  return raw.map((item) => ({
     ...item,
     oradores: item.oradores ? String(item.oradores).split(',').map((value) => value.trim()).filter(Boolean) : [],
     creadoEn: item.creadoEn || new Date().toISOString()
   }));
+}
 
-  const resultados = resultadosRaw.map((item) => ({
+function parseResultados(raw: Resultado[]): Resultado[] {
+  return raw.map((item) => ({
     ...item,
     puntuacion: Number(item.puntuacion || 0),
     speakerScores: item.speakerScores ? JSON.parse(String(item.speakerScores)) : [],
     confirmado: parseBoolean(item.confirmado)
   }));
+}
 
-  const debates = debatesRaw.map((item) => ({
+function parseDebates(raw: Debate[]): Debate[] {
+  return raw.map((item) => ({
     ...item,
     publicado: parseBoolean(item.publicado)
   }));
+}
 
-  const rankingEquipos = rankingEquiposRaw.map((item) => ({
+function parseRankingEquipos(raw: RankingEquipo[]): RankingEquipo[] {
+  return raw.map((item) => ({
     ...item,
     puntos: Number(item.puntos || 0),
     victorias: Number(item.victorias || 0),
     total: Number(item.total || 0),
     rondasJugadas: Number(item.rondasJugadas || 0)
   }));
+}
 
-  const rankingOradores = rankingOradoresRaw.map((item) => ({
+function parseRankingOradores(raw: RankingOrador[]): RankingOrador[] {
+  return raw.map((item) => ({
     ...item,
     puntos: Number(item.puntos || 0),
     debates: Number(item.debates || 0)
   }));
+}
+
+function parseRondas(raw: Ronda[]): Ronda[] {
+  return raw.map((item) => ({
+    ...item,
+    numero: Number(item.numero || 0),
+    estado: item.estado || 'abierta',
+    fecha: item.fecha || new Date().toISOString(),
+    abiertaEn: item.abiertaEn || ''
+  }));
+}
+
+async function readTab<T>(tabName: TabName, parser?: (raw: T[]) => T[]): Promise<T[]> {
+  const raw = await readSheet<T>(TAB_SHEET_MAP[tabName]);
+  return parser ? parser(raw) : raw;
+}
+
+export async function loadAllData(tabs?: TabName[]): Promise<TournamentData> {
+  const allTabs: TabName[] = ['equipos', 'instituciones', 'oradores', 'salas', 'rondas', 'debates', 'resultados', 'rankingEquipos', 'rankingOradores'];
+  const tabsToLoad = tabs || allTabs;
+
+  const promises: Promise<void>[] = [];
+  const results: PartialTournamentData = {};
+
+  for (const tab of tabsToLoad) {
+    switch (tab) {
+      case 'equipos':
+        promises.push(readTab('equipos', parseEquipos).then((data) => { results.equipos = data; }));
+        break;
+      case 'instituciones':
+        promises.push(readTab<Institucion>('instituciones').then((data) => { results.instituciones = data; }));
+        break;
+      case 'oradores':
+        promises.push(readTab<Orador>('oradores').then((data) => { results.oradores = data; }));
+        break;
+      case 'salas':
+        promises.push(readTab<Sala>('salas').then((data) => { results.salas = data; }));
+        break;
+      case 'rondas':
+        promises.push(readTab('rondas', parseRondas).then((data) => { results.rondas = data; }));
+        break;
+      case 'debates':
+        promises.push(readTab('debates', parseDebates).then((data) => { results.debates = data; }));
+        break;
+      case 'resultados':
+        promises.push(readTab('resultados', parseResultados).then((data) => { results.resultados = data; }));
+        break;
+      case 'rankingEquipos':
+        promises.push(readTab('rankingEquipos', parseRankingEquipos).then((data) => { results.rankingEquipos = data; }));
+        break;
+      case 'rankingOradores':
+        promises.push(readTab('rankingOradores', parseRankingOradores).then((data) => { results.rankingOradores = data; }));
+        break;
+    }
+  }
+
+  await Promise.all(promises);
 
   return {
-    equipos,
-    instituciones: institucionesRaw,
-    oradores: oradoresRaw,
-    salas: salasRaw,
-    rondas: rondasRaw.map((item) => ({
-      ...item,
-      numero: Number(item.numero || 0),
-      estado: item.estado || 'abierta',
-      fecha: item.fecha || new Date().toISOString(),
-      abiertaEn: item.abiertaEn || ''
-    })),
-    debates,
-    resultados,
-    rankingEquipos,
-    rankingOradores
+    equipos: results.equipos || [],
+    instituciones: results.instituciones || [],
+    oradores: results.oradores || [],
+    salas: results.salas || [],
+    rondas: results.rondas || [],
+    debates: results.debates || [],
+    resultados: results.resultados || [],
+    rankingEquipos: results.rankingEquipos || [],
+    rankingOradores: results.rankingOradores || []
   };
 }
 
 export async function syncEquipos(equipos: Equipo[]) {
-  await writeSheetObjects('Equipos', equipos.map((equipo) => ({
+  await updateSheetRow('Equipos', equipos.map((equipo) => ({
     ...equipo,
     oradores: equipo.oradores.join(', ')
   })), ['id', 'nombre', 'institucionId', 'oradores', 'creadoEn']);
 }
 
 export async function syncInstituciones(instituciones: Institucion[]) {
-  await writeSheetObjects('Instituciones', instituciones, ['id', 'nombre']);
+  await updateSheetRow('Instituciones', instituciones, ['id', 'nombre']);
 }
 
 export async function syncSalas(salas: Sala[]) {
-  await writeSheetObjects('Salas', salas, ['id', 'nombre']);
+  await updateSheetRow('Salas', salas, ['id', 'nombre']);
 }
 
 export async function syncRondas(rondas: Ronda[]) {
-  await writeSheetObjects('Rondas', rondas, ['id', 'nombre', 'numero', 'estado', 'fecha', 'abiertaEn']);
+  await updateSheetRow('Rondas', rondas, ['id', 'nombre', 'numero', 'estado', 'fecha', 'abiertaEn']);
 }
 
 export async function syncDebates(debates: Debate[]) {
-  await writeSheetObjects('Debates', debates.map((debate) => ({
+  await updateSheetRow('Debates', debates.map((debate) => ({
     ...debate,
     publicado: debate.publicado ? 'true' : 'false'
   })), ['id', 'rondaId', 'salaId', 'ag', 'ao', 'bg', 'bo', 'publicado']);
 }
 
 export async function syncResultados(resultados: Resultado[]) {
-  await writeSheetObjects('Resultados', resultados.map((resultado) => ({
+  await updateSheetRow('Resultados', resultados.map((resultado) => ({
     ...resultado,
     speakerScores: JSON.stringify(resultado.speakerScores),
     confirmado: resultado.confirmado ? 'true' : 'false'
@@ -115,15 +180,19 @@ export async function syncResultados(resultados: Resultado[]) {
 }
 
 export async function syncOradores(oradores: Orador[]) {
-  await writeSheetObjects('Oradores', oradores, ['id', 'nombre', 'equipoId']);
+  await updateSheetRow('Oradores', oradores, ['id', 'nombre', 'equipoId']);
 }
 
 export async function syncRankingEquipos(ranking: RankingEquipo[]) {
-  await writeSheetObjects('ClasificacionGeneral', ranking, ['equipoId', 'nombreEquipo', 'puntos', 'victorias', 'total', 'rondasJugadas']);
+  await writeSheet('ClasificacionGeneral', ranking, ['equipoId', 'nombreEquipo', 'puntos', 'victorias', 'total', 'rondasJugadas']);
 }
 
 export async function syncRankingOradores(ranking: RankingOrador[]) {
-  await writeSheetObjects('ClasificacionOradores', ranking, ['oradorId', 'nombreOrador', 'equipoId', 'puntos', 'debates']);
+  await writeSheet('ClasificacionOradores', ranking, ['oradorId', 'nombreOrador', 'equipoId', 'puntos', 'debates']);
+}
+
+export function clearTournamentCache(): void {
+  clearCache();
 }
 
 export function crearEquipoBase(name: string, institutionId: string, oradoresText: string): Equipo {

@@ -8,7 +8,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   if (!auth.ok) return errorResponse(auth.message, auth.status);
   try {
     const { id } = params;
-    const data = await loadAllData();
+    const data = await loadAllData(['resultados']);
     const resultado = data.resultados.find((r) => r.id === id);
     if (!resultado) return errorResponse('Resultado no encontrado', 404);
     return jsonResponse({ success: true, resultado });
@@ -23,7 +23,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   try {
     const { id } = params;
     const body = await req.json();
-    const data = await loadAllData();
+    const data = await loadAllData(['resultados']);
     const resultados = data.resultados.map((r) => (r.id === id ? { ...r, ...body } : r));
     const exists = resultados.some((r) => r.id === id);
     if (!exists) return errorResponse('Resultado no encontrado', 404);
@@ -39,7 +39,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
   if (!auth.ok) return errorResponse(auth.message, auth.status);
   try {
     const { id } = params;
-    const data = await loadAllData();
+    const data = await loadAllData(['resultados']);
     const resultados = data.resultados.filter((r) => r.id !== id);
     await syncResultados(resultados);
     return jsonResponse({ success: true });

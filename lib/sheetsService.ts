@@ -90,6 +90,15 @@ export async function updateSheetRow<T extends { id: string }>(
   cache.delete(`read:${sheetName}`);
 }
 
+export async function writeSheet<T>(
+  sheetName: string,
+  items: T[],
+  headers: string[]
+): Promise<void> {
+  await writeSheetObjects(sheetName, items, headers);
+  cache.delete(`read:${sheetName}`);
+}
+
 export async function clearSheet(sheetName: string): Promise<void> {
   await writeSheetObjects(sheetName, [], ['placeholder']);
   cache.delete(`read:${sheetName}`);

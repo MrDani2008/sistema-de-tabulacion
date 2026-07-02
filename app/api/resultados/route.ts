@@ -8,7 +8,7 @@ export async function GET(req: NextRequest) {
   const auth = await requireSession(req);
   if (!auth.ok) return errorResponse(auth.message, auth.status);
   try {
-    const data = await loadAllData();
+    const data = await loadAllData(['resultados']);
     return jsonResponse({ success: true, resultados: data.resultados });
   } catch (error: any) {
     return errorResponse(error?.message || 'Error al obtener resultados');
@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
       comentarios: body.comentarios || '',
       confirmado: false
     };
-    const data = await loadAllData();
+    const data = await loadAllData(['resultados']);
     const resultados = [nuevo, ...data.resultados];
     await syncResultados(resultados);
     return jsonResponse({ success: true, resultado: nuevo }, 201);

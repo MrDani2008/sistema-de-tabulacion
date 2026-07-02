@@ -8,7 +8,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   if (!auth.ok) return errorResponse(auth.message, auth.status);
   try {
     const { id } = params;
-    const data = await loadAllData();
+    const data = await loadAllData(['oradores']);
     const orador = data.oradores.find((o) => o.id === id);
     if (!orador) return errorResponse('Orador no encontrado', 404);
     return jsonResponse({ success: true, orador });
@@ -23,7 +23,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   try {
     const { id } = params;
     const body = await req.json();
-    const data = await loadAllData();
+    const data = await loadAllData(['oradores']);
     const oradores = data.oradores.map((o) => (o.id === id ? { ...o, ...body } : o));
     const exists = oradores.some((o) => o.id === id);
     if (!exists) return errorResponse('Orador no encontrado', 404);
@@ -39,7 +39,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
   if (!auth.ok) return errorResponse(auth.message, auth.status);
   try {
     const { id } = params;
-    const data = await loadAllData();
+    const data = await loadAllData(['oradores']);
     const oradores = data.oradores.filter((o) => o.id !== id);
     await syncOradores(oradores);
     return jsonResponse({ success: true });

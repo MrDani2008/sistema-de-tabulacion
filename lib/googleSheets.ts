@@ -25,20 +25,30 @@ function getCredentials() {
   }
 }
 
-async function getSheetsClient() {
+let cachedSheetsClient: sheets_v4.Sheets | null = null;
+let cachedSpreadsheetId: string | null = null;
+let sheetsInitialized = false;
+
+async function getSheetsClient(): Promise<sheets_v4.Sheets> {
+  if (cachedSheetsClient) return cachedSheetsClient;
   const authClient = new googleAuth.GoogleAuth({
     credentials: getCredentials(),
     scopes: ['https://www.googleapis.com/auth/spreadsheets']
   });
-  return sheets({ version: 'v4', auth: authClient });
+  cachedSheetsClient = sheets({ version: 'v4', auth: authClient });
+  return cachedSheetsClient;
 }
 
 async function getSpreadsheetId(): Promise<string> {
-  const spreadsheetId = process.env.GOOGLE_SHEETS_ID;
-  if (spreadsheetId) return spreadsheetId;
+  if (cachedSpreadsheetId) return cachedSpreadsheetId;
+  const envId = process.env.GOOGLE_SHEETS_ID;
+  if (envId) {
+    cachedSpreadsheetId = envId;
+    return envId;
+  }
 
-  const sheets = await getSheetsClient();
-  const result = await sheets.spreadsheets.create({
+  const client = await getSheetsClient();
+  const result = await client.spreadsheets.create({
     requestBody: {
       properties: {
         title: 'Torneo BP'
@@ -51,13 +61,15 @@ async function getSpreadsheetId(): Promise<string> {
     throw new Error('No se pudo crear la hoja de cálculo de Google Sheets');
   }
 
+  cachedSpreadsheetId = id;
   return id;
 }
 
 export async function ensureSpreadsheetSheets(): Promise<string> {
-  const sheets = await getSheetsClient();
+  if (sheetsInitialized) return cachedSpreadsheetId!;
+  const client = await getSheetsClient();
   const spreadsheetId = await getSpreadsheetId();
-  const spreadsheet = await sheets.spreadsheets.get({ spreadsheetId });
+  const spreadsheet = await client.spreadsheets.get({ spreadsheetId });
   const existingSheets = spreadsheet.data.sheets?.map((sheet) => sheet.properties?.title).filter(Boolean) as string[];
 
   const requests: sheets_v4.Schema$Request[] = [];
@@ -68,28 +80,28 @@ export async function ensureSpreadsheetSheets(): Promise<string> {
   });
 
   if (requests.length > 0) {
-    await sheets.spreadsheets.batchUpdate({
+    await client.spreadsheets.batchUpdate({
       spreadsheetId,
       requestBody: { requests }
     });
   }
 
   for (const sheet of requiredSheets) {
-    await ensureSheetHeaders(spreadsheetId, sheet.title, sheet.headers);
+    await ensureSheetHeaders(client, spreadsheetId, sheet.title, sheet.headers);
   }
 
+  sheetsInitialized = true;
   return spreadsheetId;
 }
 
-async function ensureSheetHeaders(spreadsheetId: string, sheetName: string, headers: string[]) {
-  const sheets = await getSheetsClient();
-  const response = await sheets.spreadsheets.values.get({
+async function ensureSheetHeaders(client: sheets_v4.Sheets, spreadsheetId: string, sheetName: string, headers: string[]) {
+  const response = await client.spreadsheets.values.get({
     spreadsheetId,
     range: `${sheetName}!A1:Z1`
   });
 
   if (!response.data.values || response.data.values.length === 0 || response.data.values[0].length === 0) {
-    await sheets.spreadsheets.values.update({
+    await client.spreadsheets.values.update({
       spreadsheetId,
       range: `${sheetName}!A1:Z1`,
       valueInputOption: 'RAW',
@@ -101,9 +113,10 @@ async function ensureSheetHeaders(spreadsheetId: string, sheetName: string, head
 }
 
 export async function readSheetObjects<T>(sheetName: string): Promise<T[]> {
-  const sheets = await getSheetsClient();
-  const spreadsheetId = await ensureSpreadsheetSheets();
-  const result = await sheets.spreadsheets.values.get({
+  await ensureSpreadsheetSheets();
+  const client = await getSheetsClient();
+  const spreadsheetId = await getSpreadsheetId();
+  const result = await client.spreadsheets.values.get({
     spreadsheetId,
     range: `${sheetName}!A1:Z`
   });
@@ -121,17 +134,20 @@ export async function readSheetObjects<T>(sheetName: string): Promise<T[]> {
 }
 
 export async function writeSheetObjects(sheetName: string, data: unknown[], headers: string[]): Promise<void> {
-  const sheets = await getSheetsClient();
-  const spreadsheetId = await ensureSpreadsheetSheets();
+  await ensureSpreadsheetSheets();
+  const client = await getSheetsClient();
+  const spreadsheetId = await getSpreadsheetId();
   const values = [headers, ...data.map((item) => headers.map((header) => {
     const value = (item as Record<string, any>)[header];
     return value === undefined || value === null ? '' : typeof value === 'object' ? JSON.stringify(value) : String(value);
   }))];
 
-  await sheets.spreadsheets.values.update({
+  await client.spreadsheets.values.update({
     spreadsheetId,
     range: `${sheetName}!A1:Z${values.length}`,
     valueInputOption: 'RAW',
     requestBody: { values }
   });
 }
+
+export { requiredSheets };

@@ -8,7 +8,7 @@ export async function GET(req: NextRequest) {
   const auth = await requireSession(req);
   if (!auth.ok) return errorResponse(auth.message, auth.status);
   try {
-    const data = await loadAllData();
+    const data = await loadAllData(['debates']);
     return jsonResponse({ success: true, debates: data.debates });
   } catch (error: any) {
     return errorResponse(error?.message || 'Error al obtener debates');
@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
       bo: body.bo,
       publicado: false
     };
-    const data = await loadAllData();
+    const data = await loadAllData(['debates']);
     const debates = [nuevo, ...data.debates];
     await syncDebates(debates);
     return jsonResponse({ success: true, debate: nuevo }, 201);

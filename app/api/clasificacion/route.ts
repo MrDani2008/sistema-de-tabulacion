@@ -7,7 +7,7 @@ export async function GET(req: NextRequest) {
   const auth = await requireSession(req);
   if (!auth.ok) return errorResponse(auth.message, auth.status);
   try {
-    const data = await loadAllData();
+    const data = await loadAllData(['equipos', 'oradores', 'resultados', 'debates']);
     const rankings = calcularClasificaciones(data);
     return jsonResponse({ success: true, rankingEquipos: rankings.rankingEquipos, rankingOradores: rankings.rankingOradores });
   } catch (error: any) {
@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
   const auth = await requireSession(req);
   if (!auth.ok) return errorResponse(auth.message, auth.status);
   try {
-    const data = await loadAllData();
+    const data = await loadAllData(['equipos', 'oradores', 'resultados', 'debates']);
     const rankings = calcularClasificaciones(data);
     await syncRankingEquipos(rankings.rankingEquipos);
     await syncRankingOradores(rankings.rankingOradores);

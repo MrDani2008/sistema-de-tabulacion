@@ -16,19 +16,13 @@ function ResultadosPageInner() {
     async function load() {
       setLoading(true);
       try {
-        const [rRes, dRes, eRes] = await Promise.all([
-          fetch('/api/resultados', { credentials: 'include' }),
-          fetch('/api/debates', { credentials: 'include' }),
-          fetch('/api/equipos', { credentials: 'include' })
-        ]);
-        if (rRes.status === 401) { router.replace('/login'); return; }
-        const rJson = await rRes.json();
-        const dJson = await dRes.json();
-        const eJson = await eRes.json();
-        if (!rRes.ok) throw new Error(rJson?.error || 'Error al cargar resultados');
-        setResultados(rJson.resultados || []);
-        setDebates(dJson.debates || []);
-        setEquipos(eJson.equipos || []);
+        const res = await fetch('/api/tournament?tabs=resultados,debates,equipos', { credentials: 'include' });
+        if (res.status === 401) { router.replace('/login'); return; }
+        const json = await res.json();
+        if (!res.ok) throw new Error(json?.error || 'Error al cargar resultados');
+        setResultados(json.data.resultados || []);
+        setDebates(json.data.debates || []);
+        setEquipos(json.data.equipos || []);
       } catch (err: any) {
         setError(err.message || 'Error desconocido');
       } finally {

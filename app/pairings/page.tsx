@@ -17,22 +17,14 @@ function PairingsPageInner() {
     async function load() {
       setLoading(true);
       try {
-        const [dRes, sRes, eRes, rRes] = await Promise.all([
-          fetch('/api/debates', { credentials: 'include' }),
-          fetch('/api/salas', { credentials: 'include' }),
-          fetch('/api/equipos', { credentials: 'include' }),
-          fetch('/api/rondas', { credentials: 'include' })
-        ]);
-        if (dRes.status === 401) { router.replace('/login'); return; }
-        const dJson = await dRes.json();
-        const sJson = await sRes.json();
-        const eJson = await eRes.json();
-        const rJson = await rRes.json();
-        if (!dRes.ok) throw new Error(dJson?.error || 'Error al cargar debates');
-        setDebates(dJson.debates || []);
-        setSalas(sJson.salas || []);
-        setEquipos(eJson.equipos || []);
-        setRondas(rJson.rondas || []);
+        const res = await fetch('/api/tournament?tabs=debates,salas,equipos,rondas', { credentials: 'include' });
+        if (res.status === 401) { router.replace('/login'); return; }
+        const json = await res.json();
+        if (!res.ok) throw new Error(json?.error || 'Error al cargar emparejamientos');
+        setDebates(json.data.debates || []);
+        setSalas(json.data.salas || []);
+        setEquipos(json.data.equipos || []);
+        setRondas(json.data.rondas || []);
       } catch (err: any) {
         setError(err.message || 'Error desconocido');
       } finally {
@@ -56,14 +48,17 @@ function PairingsPageInner() {
 
   async function publicarEmparejamientos() {
     try {
-      for (const debate of debates) {
-        if (!debate.publicado) {
-          await fetch(`/api/debates/${debate.id}`, {
-            method: 'PUT',
-            headers: { 'content-type': 'application/json' },
-            credentials: 'include',
-            body: JSON.stringify({ publicado: true })
-          });
+      const unpublishedIds = debates.filter((d) => !d.publicado).map((d) => d.id);
+      if (unpublishedIds.length > 0) {
+        const res = await fetch('/api/debates/batch', {
+          method: 'PUT',
+          headers: { 'content-type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ ids: unpublishedIds, updates: { publicado: true } })
+        });
+        if (!res.ok) {
+          const json = await res.json();
+          throw new Error(json?.error || 'Error al publicar');
         }
       }
       setDebates((prev) => prev.map((d) => ({ ...d, publicado: true })));

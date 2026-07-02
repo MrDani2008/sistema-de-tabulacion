@@ -8,7 +8,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   if (!auth.ok) return errorResponse(auth.message, auth.status);
   try {
     const { id } = params;
-    const data = await loadAllData();
+    const data = await loadAllData(['salas']);
     const sala = data.salas.find((s) => s.id === id);
     if (!sala) return errorResponse('Sala no encontrada', 404);
     return jsonResponse({ success: true, sala });
@@ -23,7 +23,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   try {
     const { id } = params;
     const body = await req.json();
-    const data = await loadAllData();
+    const data = await loadAllData(['salas']);
     const salas = data.salas.map((s) => (s.id === id ? { ...s, ...body } : s));
     const exists = salas.some((s) => s.id === id);
     if (!exists) return errorResponse('Sala no encontrada', 404);
@@ -39,7 +39,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
   if (!auth.ok) return errorResponse(auth.message, auth.status);
   try {
     const { id } = params;
-    const data = await loadAllData();
+    const data = await loadAllData(['salas']);
     const salas = data.salas.filter((s) => s.id !== id);
     await syncSalas(salas);
     return jsonResponse({ success: true });

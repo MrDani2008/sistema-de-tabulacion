@@ -8,7 +8,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   if (!auth.ok) return errorResponse(auth.message, auth.status);
   try {
     const { id } = params;
-    const data = await loadAllData();
+    const data = await loadAllData(['instituciones']);
     const institucion = data.instituciones.find((i) => i.id === id);
     if (!institucion) return errorResponse('Institución no encontrada', 404);
     return jsonResponse({ success: true, institucion });
@@ -23,7 +23,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   try {
     const { id } = params;
     const body = await req.json();
-    const data = await loadAllData();
+    const data = await loadAllData(['instituciones']);
     const instituciones = data.instituciones.map((i) => (i.id === id ? { ...i, ...body } : i));
     const exists = instituciones.some((i) => i.id === id);
     if (!exists) return errorResponse('Institución no encontrada', 404);
@@ -39,7 +39,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
   if (!auth.ok) return errorResponse(auth.message, auth.status);
   try {
     const { id } = params;
-    const data = await loadAllData();
+    const data = await loadAllData(['instituciones']);
     const instituciones = data.instituciones.filter((i) => i.id !== id);
     await syncInstituciones(instituciones);
     return jsonResponse({ success: true });

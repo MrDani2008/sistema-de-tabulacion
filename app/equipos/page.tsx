@@ -22,16 +22,12 @@ function EquiposPageInner() {
     async function load() {
       setLoading(true);
       try {
-        const [eRes, iRes] = await Promise.all([
-          fetch('/api/equipos', { credentials: 'include' }),
-          fetch('/api/instituciones', { credentials: 'include' })
-        ]);
-        if (eRes.status === 401 || iRes.status === 401) { router.replace('/login'); return; }
-        const eJson = await eRes.json();
-        const iJson = await iRes.json();
-        if (!eRes.ok) throw new Error(eJson?.error || 'Error al cargar equipos');
-        setEquipos(eJson.equipos || []);
-        setInstituciones(iJson.instituciones || []);
+        const res = await fetch('/api/tournament?tabs=equipos,instituciones', { credentials: 'include' });
+        if (res.status === 401) { router.replace('/login'); return; }
+        const json = await res.json();
+        if (!res.ok) throw new Error(json?.error || 'Error al cargar equipos');
+        setEquipos(json.data.equipos || []);
+        setInstituciones(json.data.instituciones || []);
       } catch (err: any) {
         setError(err.message || 'Error desconocido');
       } finally {

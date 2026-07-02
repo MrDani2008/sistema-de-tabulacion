@@ -8,7 +8,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   if (!auth.ok) return errorResponse(auth.message, auth.status);
   try {
     const { id } = params;
-    const data = await loadAllData();
+    const data = await loadAllData(['equipos']);
     const equipo = data.equipos.find((e) => e.id === id);
     if (!equipo) return errorResponse('Equipo no encontrado', 404);
     return jsonResponse({ success: true, equipo });
@@ -23,7 +23,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   try {
     const { id } = params;
     const body = await req.json();
-    const data = await loadAllData();
+    const data = await loadAllData(['equipos']);
     const equipos = data.equipos.map((e) => (e.id === id ? { ...e, ...body } : e));
     const exists = equipos.some((e) => e.id === id);
     if (!exists) return errorResponse('Equipo no encontrado', 404);
@@ -39,7 +39,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
   if (!auth.ok) return errorResponse(auth.message, auth.status);
   try {
     const { id } = params;
-    const data = await loadAllData();
+    const data = await loadAllData(['equipos']);
     const equipos = data.equipos.filter((e) => e.id !== id);
     await syncEquipos(equipos);
     return jsonResponse({ success: true });

@@ -8,7 +8,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   if (!auth.ok) return errorResponse(auth.message, auth.status);
   try {
     const { id } = params;
-    const data = await loadAllData();
+    const data = await loadAllData(['debates']);
     const debate = data.debates.find((d) => d.id === id);
     if (!debate) return errorResponse('Debate no encontrado', 404);
     return jsonResponse({ success: true, debate });
@@ -23,7 +23,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   try {
     const { id } = params;
     const body = await req.json();
-    const data = await loadAllData();
+    const data = await loadAllData(['debates']);
     const debates = data.debates.map((d) => (d.id === id ? { ...d, ...body } : d));
     const exists = debates.some((d) => d.id === id);
     if (!exists) return errorResponse('Debate no encontrado', 404);
@@ -39,7 +39,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
   if (!auth.ok) return errorResponse(auth.message, auth.status);
   try {
     const { id } = params;
-    const data = await loadAllData();
+    const data = await loadAllData(['debates']);
     const debates = data.debates.filter((d) => d.id !== id);
     await syncDebates(debates);
     return jsonResponse({ success: true });

@@ -20,19 +20,13 @@ function RondasPageInner() {
     async function load() {
       setLoading(true);
       try {
-        const [rRes, dRes, sRes] = await Promise.all([
-          fetch('/api/rondas', { credentials: 'include' }),
-          fetch('/api/debates', { credentials: 'include' }),
-          fetch('/api/salas', { credentials: 'include' })
-        ]);
-        if (rRes.status === 401) { router.replace('/login'); return; }
-        const rJson = await rRes.json();
-        const dJson = await dRes.json();
-        const sJson = await sRes.json();
-        if (!rRes.ok) throw new Error(rJson?.error || 'Error al cargar rondas');
-        setRondas(rJson.rondas || []);
-        setDebates(dJson.debates || []);
-        setSalas(sJson.salas || []);
+        const res = await fetch('/api/tournament?tabs=rondas,debates,salas', { credentials: 'include' });
+        if (res.status === 401) { router.replace('/login'); return; }
+        const json = await res.json();
+        if (!res.ok) throw new Error(json?.error || 'Error al cargar rondas');
+        setRondas(json.data.rondas || []);
+        setDebates(json.data.debates || []);
+        setSalas(json.data.salas || []);
       } catch (err: any) {
         setError(err.message || 'Error desconocido');
       } finally {
