@@ -17,6 +17,7 @@ function EquiposPageInner() {
   const [form, setForm] = useState<EquipoFormState>({ nombre: '', institucionId: '', oradores: '' });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -36,6 +37,30 @@ function EquiposPageInner() {
     }
     load();
   }, [router]);
+
+  async function handleDelete(id: string) {
+    const confirmado = window.confirm('¿Está seguro de que desea eliminar este equipo?');
+    if (!confirmado) return;
+    setDeletingId(id);
+    setError(null);
+    try {
+      const res = await fetch(`/api/equipos/${id}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      });
+      if (res.status === 401) { router.replace('/login'); return; }
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || 'Error al eliminar equipo');
+      const refreshRes = await fetch('/api/tournament?tabs=equipos,instituciones', { credentials: 'include' });
+      const refreshJson = await refreshRes.json();
+      setEquipos(refreshJson.data.equipos || []);
+      setInstituciones(refreshJson.data.instituciones || []);
+    } catch (err: any) {
+      setError(err.message || 'Error desconocido');
+    } finally {
+      setDeletingId(null);
+    }
+  }
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -84,6 +109,7 @@ function EquiposPageInner() {
                   <th>Institución</th>
                   <th>Oradores</th>
                   <th>Fecha</th>
+                  <th></th>
                 </tr>
               </thead>
               <tbody>
@@ -93,6 +119,15 @@ function EquiposPageInner() {
                     <td>{instituciones.find((i) => i.id === equipo.institucionId)?.nombre || 'Sin institución'}</td>
                     <td>{equipo.oradores.join(', ')}</td>
                     <td>{new Date(equipo.creadoEn).toLocaleDateString('es-ES')}</td>
+                    <td>
+                      <button
+                        className="text-red-600 hover:text-red-800"
+                        disabled={deletingId === equipo.id}
+                        onClick={() => handleDelete(equipo.id)}
+                      >
+                        {deletingId === equipo.id ? 'Eliminando...' : 'Eliminar'}
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
