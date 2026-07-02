@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { withAuth } from '@/lib/withAuth';
 
 interface EquipoFormState {
   nombre: string;
@@ -8,25 +10,23 @@ interface EquipoFormState {
   oradores: string;
 }
 
-const API_KEY = process.env.NEXT_PUBLIC_API_KEY || '';
-
-export default function EquiposPage() {
+function EquiposPageInner() {
+  const router = useRouter();
   const [equipos, setEquipos] = useState<any[]>([]);
   const [instituciones, setInstituciones] = useState<any[]>([]);
   const [form, setForm] = useState<EquipoFormState>({ nombre: '', institucionId: '', oradores: '' });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const API_KEY = process.env.NEXT_PUBLIC_API_KEY || '';
-
   useEffect(() => {
     async function load() {
       setLoading(true);
       try {
         const [eRes, iRes] = await Promise.all([
-          fetch('/api/equipos', { headers: { 'x-api-key': API_KEY } }),
-          fetch('/api/instituciones', { headers: { 'x-api-key': API_KEY } })
+          fetch('/api/equipos', { credentials: 'include' }),
+          fetch('/api/instituciones', { credentials: 'include' })
         ]);
+        if (eRes.status === 401 || iRes.status === 401) { router.replace('/login'); return; }
         const eJson = await eRes.json();
         const iJson = await iRes.json();
         if (!eRes.ok) throw new Error(eJson?.error || 'Error al cargar equipos');
@@ -39,7 +39,7 @@ export default function EquiposPage() {
       }
     }
     load();
-  }, [API_KEY]);
+  }, [router]);
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -50,9 +50,11 @@ export default function EquiposPage() {
       try {
         const res = await fetch('/api/equipos', {
           method: 'POST',
-          headers: { 'content-type': 'application/json', 'x-api-key': API_KEY },
+          headers: { 'content-type': 'application/json' },
+          credentials: 'include',
           body: JSON.stringify({ nombre: form.nombre, institucionId: form.institucionId, oradores: form.oradores })
         });
+        if (res.status === 401) { router.replace('/login'); return; }
         const json = await res.json();
         if (!res.ok) throw new Error(json?.error || 'Error creando equipo');
         setEquipos((prev) => [json.equipo, ...prev]);
@@ -150,3 +152,6 @@ export default function EquiposPage() {
     </section>
   );
 }
+
+const EquiposPage = withAuth(EquiposPageInner);
+export default EquiposPage;

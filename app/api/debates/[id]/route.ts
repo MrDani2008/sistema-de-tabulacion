@@ -1,10 +1,11 @@
 import { NextRequest } from 'next/server';
 import { loadAllData, syncDebates } from '@/lib/tournament';
-import { jsonResponse, errorResponse, requireApiKey } from '@/lib/apiUtils';
+import { jsonResponse, errorResponse } from '@/lib/apiUtils';
+import { requireSession } from '@/lib/auth';
 
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
-  const auth = requireApiKey(req.headers);
-  if (!auth.ok) return errorResponse(auth.message || 'No autorizado', auth.status);
+  const auth = await requireSession(req);
+  if (!auth.ok) return errorResponse(auth.message, auth.status);
   try {
     const { id } = params;
     const data = await loadAllData();
@@ -17,8 +18,8 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 }
 
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
-  const auth = requireApiKey(req.headers);
-  if (!auth.ok) return errorResponse(auth.message || 'No autorizado', auth.status);
+  const auth = await requireSession(req);
+  if (!auth.ok) return errorResponse(auth.message, auth.status);
   try {
     const { id } = params;
     const body = await req.json();
@@ -34,8 +35,8 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 }
 
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
-  const auth = requireApiKey(req.headers);
-  if (!auth.ok) return errorResponse(auth.message || 'No autorizado', auth.status);
+  const auth = await requireSession(req);
+  if (!auth.ok) return errorResponse(auth.message, auth.status);
   try {
     const { id } = params;
     const data = await loadAllData();

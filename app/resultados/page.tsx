@@ -1,27 +1,27 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { withAuth } from '@/lib/withAuth';
 
-const API_KEY = process.env.NEXT_PUBLIC_API_KEY || '';
-
-export default function ResultadosPage() {
+function ResultadosPageInner() {
+  const router = useRouter();
   const [resultados, setResultados] = useState<any[]>([]);
   const [debates, setDebates] = useState<any[]>([]);
   const [equipos, setEquipos] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const API_KEY = process.env.NEXT_PUBLIC_API_KEY || '';
-
   useEffect(() => {
     async function load() {
       setLoading(true);
       try {
         const [rRes, dRes, eRes] = await Promise.all([
-          fetch('/api/resultados', { headers: { 'x-api-key': API_KEY } }),
-          fetch('/api/debates', { headers: { 'x-api-key': API_KEY } }),
-          fetch('/api/equipos', { headers: { 'x-api-key': API_KEY } })
+          fetch('/api/resultados', { credentials: 'include' }),
+          fetch('/api/debates', { credentials: 'include' }),
+          fetch('/api/equipos', { credentials: 'include' })
         ]);
+        if (rRes.status === 401) { router.replace('/login'); return; }
         const rJson = await rRes.json();
         const dJson = await dRes.json();
         const eJson = await eRes.json();
@@ -36,7 +36,7 @@ export default function ResultadosPage() {
       }
     }
     load();
-  }, [API_KEY]);
+  }, [router]);
 
   function getDebateLabel(debateId: string) {
     const debate = debates.find((d) => d.id === debateId);
@@ -59,9 +59,11 @@ export default function ResultadosPage() {
       if (!resultado) return;
       const res = await fetch(`/api/resultados/${id}`, {
         method: 'PUT',
-        headers: { 'content-type': 'application/json', 'x-api-key': API_KEY },
+        headers: { 'content-type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ puntuacion: resultado.puntuacion, confirmado: true })
       });
+      if (res.status === 401) { router.replace('/login'); return; }
       if (!res.ok) {
         const json = await res.json();
         throw new Error(json?.error || 'Error al confirmar');
@@ -127,3 +129,6 @@ export default function ResultadosPage() {
     </section>
   );
 }
+
+const ResultadosPage = withAuth(ResultadosPageInner);
+export default ResultadosPage;

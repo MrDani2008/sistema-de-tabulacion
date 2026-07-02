@@ -1,22 +1,22 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { withAuth } from '@/lib/withAuth';
 
-const API_KEY = process.env.NEXT_PUBLIC_API_KEY || '';
-
-export default function InstitucionesPage() {
+function InstitucionesPageInner() {
+  const router = useRouter();
   const [instituciones, setInstituciones] = useState<any[]>([]);
   const [nombre, setNombre] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const API_KEY = process.env.NEXT_PUBLIC_API_KEY || '';
-
   useEffect(() => {
     async function load() {
       setLoading(true);
       try {
-        const res = await fetch('/api/instituciones', { headers: { 'x-api-key': API_KEY } });
+        const res = await fetch('/api/instituciones', { credentials: 'include' });
+        if (res.status === 401) { router.replace('/login'); return; }
         const json = await res.json();
         if (!res.ok) throw new Error(json?.error || 'Error al cargar instituciones');
         setInstituciones(json.instituciones || []);
@@ -27,7 +27,7 @@ export default function InstitucionesPage() {
       }
     }
     load();
-  }, [API_KEY]);
+  }, [router]);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -37,9 +37,11 @@ export default function InstitucionesPage() {
     try {
       const res = await fetch('/api/instituciones', {
         method: 'POST',
-        headers: { 'content-type': 'application/json', 'x-api-key': API_KEY },
+        headers: { 'content-type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ nombre })
       });
+      if (res.status === 401) { router.replace('/login'); return; }
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || 'Error creando institución');
       setInstituciones((prev) => [json.institucion, ...prev]);
@@ -103,3 +105,6 @@ export default function InstitucionesPage() {
     </section>
   );
 }
+
+const InstitucionesPage = withAuth(InstitucionesPageInner);
+export default InstitucionesPage;

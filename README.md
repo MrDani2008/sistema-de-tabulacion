@@ -14,8 +14,9 @@ Gestor de torneos de debate British Parliamentary (BP). Persistencia en Google S
 |---|---|---|
 | `GOOGLE_SERVICE_ACCOUNT_KEY` | Sí | JSON de la cuenta de servicio de Google Cloud |
 | `GOOGLE_SHEETS_ID` | No | ID de la hoja de cálculo existente. Si se omite, se crea una nueva automáticamente |
-| `API_KEY` | No | Clave para proteger las rutas API. Si se omite, la autenticación se desactiva (solo desarrollo) |
-| `NEXT_PUBLIC_API_KEY` | No | Misma clave API, expuesta al cliente para las llamadas fetch desde el navegador |
+| `ADMIN_USER` | Sí | Usuario administrador para iniciar sesión |
+| `ADMIN_PASS` | Sí | Contraseña del administrador |
+| `SESSION_SECRET` | Sí | Secreto para firmar tokens JWT (usar string aleatorio de 32+ caracteres) |
 
 ## Instalación
 
@@ -29,7 +30,7 @@ npm install
 npm run dev
 ```
 
-Abre http://localhost:3000 en el navegador.
+Abre http://localhost:3000 en el navegador. Serás redirigido a `/login` si no has iniciado sesión.
 
 ## Build y producción
 
@@ -38,27 +39,50 @@ npm run build
 npm run start
 ```
 
-## Autenticación de API
+## Inicialización de hojas
 
-Todas las rutas API requieren la cabecera `x-api-key` cuando la variable `API_KEY` está configurada.
-
-Ejemplo con curl:
+Una vez desplegado, ejecuta el endpoint de inicialización una sola vez para crear las 9 pestañas en Google Sheets:
 
 ```bash
-curl -H "x-api-key: TU_CLAVE" http://localhost:3000/api/equipos
+curl -X POST "https://TU-DOMINIO.vercel.app/api/init?adminPass=TU_PASSWORD"
 ```
 
-Si `API_KEY` no está definida, las rutas aceptan peticiones sin autenticación.
+Este endpoint es idempotente — es seguro ejecutarlo varias veces.
+
+## Autenticación
+
+Sesión basada en JWT almacenado en cookie HttpOnly (`session-token`). El flujo:
+
+1. Usuario ingresa credenciales en `/login`
+2. `POST /api/auth/login` valida contra `ADMIN_USER`/`ADMIN_PASS` y emite cookie
+3. Todas las rutas API y páginas protegidas validan la cookie server-side
+4. `POST /api/auth/logout` limpia la cookie
+
+El middleware de Next.js redirige a `/login` si no hay sesión válida.
 
 ## Endpoints API
 
+### Autenticación
+| Método | Ruta | Descripción |
+|---|---|---|
+| POST | `/api/auth/login` | Iniciar sesión (usuario, contraseña) |
+| POST | `/api/auth/logout` | Cerrar sesión |
+
+### Datos del torneo
 | Método | Ruta | Descripción |
 |---|---|---|
 | GET | `/api/tournament` | Carga todos los datos del torneo |
+| POST | `/api/init?adminPass=X` | Inicializar hojas de Google Sheets (una vez) |
+
+### CRUD Entidades
+| Método | Ruta | Descripción |
+|---|---|---|
 | GET/POST | `/api/equipos` | Listar / crear equipos |
 | GET/PUT/DELETE | `/api/equipos/:id` | Obtener / actualizar / eliminar equipo |
 | GET/POST | `/api/instituciones` | Listar / crear instituciones |
 | GET/PUT/DELETE | `/api/instituciones/:id` | Obtener / actualizar / eliminar institución |
+| GET/POST | `/api/oradores` | Listar / crear oradores |
+| GET/PUT/DELETE | `/api/oradores/:id` | Obtener / actualizar / eliminar orador |
 | GET/POST | `/api/salas` | Listar / crear salas |
 | GET/PUT/DELETE | `/api/salas/:id` | Obtener / actualizar / eliminar sala |
 | GET/POST | `/api/rondas` | Listar / crear rondas |
@@ -67,36 +91,52 @@ Si `API_KEY` no está definida, las rutas aceptan peticiones sin autenticación.
 | GET/PUT/DELETE | `/api/debates/:id` | Obtener / actualizar / eliminar debate |
 | GET/POST | `/api/resultados` | Listar / crear resultados |
 | GET/PUT/DELETE | `/api/resultados/:id` | Obtener / actualizar / eliminar resultado |
+| GET/POST | `/api/clasificacion` | Obtener / recalcular clasificaciones |
 
 ## Despliegue en Vercel
 
 1. Conectar el repositorio a Vercel
-2. Configurar las variables de entorno en el panel de Vercel
+2. Configurar las variables de entorno en el panel de Vercel (`ADMIN_USER`, `ADMIN_PASS`, `SESSION_SECRET`, `GOOGLE_SERVICE_ACCOUNT_KEY`, `GOOGLE_SHEETS_ID`)
 3. Desplegar — Vercel detecta Next.js automáticamente
-
-```bash
-vercel deploy
-```
+4. Ejecutar `POST /api/init?adminPass=TU_PASSWORD` para crear las hojas
 
 ## Estructura del proyecto
 
 ```
+middleware.ts           # Protección de rutas (cookie session)
 app/
-  api/          # Rutas API (equipos, instituciones, salas, rondas, debates, resultados, tournament)
-  components/   # Componentes compartidos (Sidebar)
-  equipos/      # CRUD de equipos
-  instituciones/# CRUD de instituciones
-  salas/        # CRUD de salas
-  rondas/       # Creación de rondas y emparejamientos
-  pairings/     # Visualización de emparejamientos
-  resultados/   # Entrada de puntajes
-  ranking/      # Clasificaciones
-  dashboard/    # Resumen del torneo
-  configuracion/# Documentación de configuración
+  api/
+    auth/login/         # POST login → cookie
+    auth/logout/        # POST logout → clear cookie
+    init/               # POST inicialización de hojas
+    equipos/            # CRUD equipos
+    instituciones/      # CRUD instituciones
+    oradores/           # CRUD oradores
+    salas/              # CRUD salas
+    rondas/             # CRUD rondas
+    debates/            # CRUD debates
+    resultados/         # CRUD resultados
+    clasificacion/      # GET/POST clasificaciones
+    tournament/         # GET todos los datos
+  components/           # Componentes compartidos (Sidebar)
+  login/                # Página de inicio de sesión
+  equipos/              # UI gestión de equipos
+  instituciones/        # UI gestión de instituciones
+  rondas/               # UI rondas y emparejamientos
+  salas/                # UI gestión de salas
+  pairings/             # UI emparejamientos
+  resultados/           # UI entrada de puntajes
+  ranking/              # UI clasificaciones
+  dashboard/            # Resumen del torneo
+  configuracion/        # Documentación
 lib/
-  types.ts        # Interfaces del dominio
-  tournament.ts   # Lógica de negocio y sincronización con Sheets
-  googleSheets.ts # Cliente de Google Sheets (capa de persistencia)
-  apiUtils.ts     # Helpers HTTP (auth, respuestas JSON)
-  utils.ts        # Utilidades generales
+  auth.ts               # JWT sessions (create, validate, cookie helpers)
+  sheetsService.ts      # Capa de abstracción sobre Google Sheets (read, append, update, batch, cache)
+  sheetsInit.ts         # Inicialización idempotente de pestañas
+  tournament.ts         # Lógica de negocio y sincronización
+  googleSheets.ts       # Cliente de Google Sheets (bajo nivel)
+  types.ts              # Interfaces del dominio
+  apiUtils.ts           # Helpers HTTP (jsonResponse, errorResponse)
+  withAuth.tsx          # HOC para páginas client-side protegidas
+  utils.ts              # Utilidades generales
 ```

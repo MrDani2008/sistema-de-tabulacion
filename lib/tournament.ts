@@ -114,6 +114,10 @@ export async function syncResultados(resultados: Resultado[]) {
   })), ['id', 'debateId', 'equipoId', 'puntuacion', 'speakerScores', 'comentarios', 'confirmado']);
 }
 
+export async function syncOradores(oradores: Orador[]) {
+  await writeSheetObjects('Oradores', oradores, ['id', 'nombre', 'equipoId']);
+}
+
 export async function syncRankingEquipos(ranking: RankingEquipo[]) {
   await writeSheetObjects('ClasificacionGeneral', ranking, ['equipoId', 'nombreEquipo', 'puntos', 'victorias', 'total', 'rondasJugadas']);
 }

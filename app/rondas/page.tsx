@@ -1,10 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { withAuth } from '@/lib/withAuth';
 
-const API_KEY = process.env.NEXT_PUBLIC_API_KEY || '';
-
-export default function RondasPage() {
+function RondasPageInner() {
+  const router = useRouter();
   const [rondas, setRondas] = useState<any[]>([]);
   const [debates, setDebates] = useState<any[]>([]);
   const [salas, setSalas] = useState<any[]>([]);
@@ -15,17 +16,16 @@ export default function RondasPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const API_KEY = process.env.NEXT_PUBLIC_API_KEY || '';
-
   useEffect(() => {
     async function load() {
       setLoading(true);
       try {
         const [rRes, dRes, sRes] = await Promise.all([
-          fetch('/api/rondas', { headers: { 'x-api-key': API_KEY } }),
-          fetch('/api/debates', { headers: { 'x-api-key': API_KEY } }),
-          fetch('/api/salas', { headers: { 'x-api-key': API_KEY } })
+          fetch('/api/rondas', { credentials: 'include' }),
+          fetch('/api/debates', { credentials: 'include' }),
+          fetch('/api/salas', { credentials: 'include' })
         ]);
+        if (rRes.status === 401) { router.replace('/login'); return; }
         const rJson = await rRes.json();
         const dJson = await dRes.json();
         const sJson = await sRes.json();
@@ -40,7 +40,7 @@ export default function RondasPage() {
       }
     }
     load();
-  }, [API_KEY]);
+  }, [router]);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -50,7 +50,8 @@ export default function RondasPage() {
     try {
       const res = await fetch('/api/rondas', {
         method: 'POST',
-        headers: { 'content-type': 'application/json', 'x-api-key': API_KEY },
+        headers: { 'content-type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           nombre,
           numero,
@@ -58,11 +59,12 @@ export default function RondasPage() {
           generarPairings
         })
       });
+      if (res.status === 401) { router.replace('/login'); return; }
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || 'Error creando ronda');
       setRondas((prev) => [json.ronda, ...prev]);
       if (json.pairingsGenerados > 0) {
-        const dRes = await fetch('/api/debates', { headers: { 'x-api-key': API_KEY } });
+        const dRes = await fetch('/api/debates', { credentials: 'include' });
         const dJson = await dRes.json();
         setDebates(dJson.debates || []);
       }
@@ -212,3 +214,6 @@ export default function RondasPage() {
     </section>
   );
 }
+
+const RondasPage = withAuth(RondasPageInner);
+export default RondasPage;

@@ -1,10 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { withAuth } from '@/lib/withAuth';
 
-const API_KEY = process.env.NEXT_PUBLIC_API_KEY || '';
-
-export default function PairingsPage() {
+function PairingsPageInner() {
+  const router = useRouter();
   const [debates, setDebates] = useState<any[]>([]);
   const [salas, setSalas] = useState<any[]>([]);
   const [equipos, setEquipos] = useState<any[]>([]);
@@ -12,18 +13,17 @@ export default function PairingsPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const API_KEY = process.env.NEXT_PUBLIC_API_KEY || '';
-
   useEffect(() => {
     async function load() {
       setLoading(true);
       try {
         const [dRes, sRes, eRes, rRes] = await Promise.all([
-          fetch('/api/debates', { headers: { 'x-api-key': API_KEY } }),
-          fetch('/api/salas', { headers: { 'x-api-key': API_KEY } }),
-          fetch('/api/equipos', { headers: { 'x-api-key': API_KEY } }),
-          fetch('/api/rondas', { headers: { 'x-api-key': API_KEY } })
+          fetch('/api/debates', { credentials: 'include' }),
+          fetch('/api/salas', { credentials: 'include' }),
+          fetch('/api/equipos', { credentials: 'include' }),
+          fetch('/api/rondas', { credentials: 'include' })
         ]);
+        if (dRes.status === 401) { router.replace('/login'); return; }
         const dJson = await dRes.json();
         const sJson = await sRes.json();
         const eJson = await eRes.json();
@@ -40,7 +40,7 @@ export default function PairingsPage() {
       }
     }
     load();
-  }, [API_KEY]);
+  }, [router]);
 
   function getSalaNombre(salaId: string) {
     return salas.find((s) => s.id === salaId)?.nombre || 'Sin sala';
@@ -60,7 +60,8 @@ export default function PairingsPage() {
         if (!debate.publicado) {
           await fetch(`/api/debates/${debate.id}`, {
             method: 'PUT',
-            headers: { 'content-type': 'application/json', 'x-api-key': API_KEY },
+            headers: { 'content-type': 'application/json' },
+            credentials: 'include',
             body: JSON.stringify({ publicado: true })
           });
         }
@@ -123,3 +124,6 @@ export default function PairingsPage() {
     </section>
   );
 }
+
+const PairingsPage = withAuth(PairingsPageInner);
+export default PairingsPage;

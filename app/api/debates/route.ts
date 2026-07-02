@@ -1,11 +1,12 @@
 import { NextRequest } from 'next/server';
 import { loadAllData, syncDebates } from '@/lib/tournament';
-import { jsonResponse, errorResponse, requireApiKey } from '@/lib/apiUtils';
+import { jsonResponse, errorResponse } from '@/lib/apiUtils';
+import { requireSession } from '@/lib/auth';
 import { generarId } from '@/lib/utils';
 
 export async function GET(req: NextRequest) {
-  const auth = requireApiKey(req.headers);
-  if (!auth.ok) return errorResponse(auth.message || 'No autorizado', auth.status);
+  const auth = await requireSession(req);
+  if (!auth.ok) return errorResponse(auth.message, auth.status);
   try {
     const data = await loadAllData();
     return jsonResponse({ success: true, debates: data.debates });
@@ -15,8 +16,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const auth = requireApiKey(req.headers);
-  if (!auth.ok) return errorResponse(auth.message || 'No autorizado', auth.status);
+  const auth = await requireSession(req);
+  if (!auth.ok) return errorResponse(auth.message, auth.status);
   try {
     const body = await req.json();
     if (!body.rondaId) return errorResponse('rondaId es obligatorio', 400);

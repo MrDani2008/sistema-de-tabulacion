@@ -1,27 +1,27 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { withAuth } from '@/lib/withAuth';
 
-const API_KEY = process.env.NEXT_PUBLIC_API_KEY || '';
-
-export default function RankingPage() {
+function RankingPageInner() {
+  const router = useRouter();
   const [rankingEquipos, setRankingEquipos] = useState<any[]>([]);
   const [rankingOradores, setRankingOradores] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<'equipos' | 'oradores'>('equipos');
 
-  const API_KEY = process.env.NEXT_PUBLIC_API_KEY || '';
-
   useEffect(() => {
     async function load() {
       setLoading(true);
       try {
-        const res = await fetch('/api/tournament', { headers: { 'x-api-key': API_KEY } });
+        const res = await fetch('/api/clasificacion', { credentials: 'include' });
+        if (res.status === 401) { router.replace('/login'); return; }
         const json = await res.json();
         if (!res.ok) throw new Error(json?.error || 'Error al cargar ranking');
-        setRankingEquipos(json.data?.rankingEquipos || []);
-        setRankingOradores(json.data?.rankingOradores || []);
+        setRankingEquipos(json.rankingEquipos || []);
+        setRankingOradores(json.rankingOradores || []);
       } catch (err: any) {
         setError(err.message || 'Error desconocido');
       } finally {
@@ -29,7 +29,7 @@ export default function RankingPage() {
       }
     }
     load();
-  }, [API_KEY]);
+  }, [router]);
 
   return (
     <section className="space-y-6">
@@ -115,3 +115,6 @@ export default function RankingPage() {
     </section>
   );
 }
+
+const RankingPage = withAuth(RankingPageInner);
+export default RankingPage;
