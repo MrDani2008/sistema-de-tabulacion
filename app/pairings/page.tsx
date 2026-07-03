@@ -109,7 +109,15 @@ function PairingsPageInner() {
                   <td>{getEquipoNombre(debate.ao)}</td>
                   <td>{getEquipoNombre(debate.bg)}</td>
                   <td>{getEquipoNombre(debate.bo)}</td>
-                  <td>{debate.publicado ? 'Publicado' : 'Borrador'}</td>
+                    <td>
+                      {debate.incompleto ? (
+                        <span className="text-amber-600">Incompleto</span>
+                      ) : debate.publicado ? (
+                        'Publicado'
+                      ) : (
+                        'Borrador'
+                      )}
+                    </td>
                 </tr>
               ))}
             </tbody>

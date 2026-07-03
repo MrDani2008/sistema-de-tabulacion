@@ -54,7 +54,8 @@ function parseResultados(raw: Resultado[]): Resultado[] {
 function parseDebates(raw: Debate[]): Debate[] {
   return raw.map((item) => ({
     ...item,
-    publicado: parseBoolean(item.publicado)
+    publicado: parseBoolean(item.publicado),
+    incompleto: parseBoolean(item.incompleto)
   }));
 }
 
@@ -167,8 +168,9 @@ export async function syncRondas(rondas: Ronda[]) {
 export async function syncDebates(debates: Debate[]) {
   await updateSheetRow('Debates', debates.map((debate) => ({
     ...debate,
-    publicado: debate.publicado ? 'true' : 'false'
-  })), ['id', 'rondaId', 'salaId', 'ag', 'ao', 'bg', 'bo', 'publicado']);
+    publicado: debate.publicado ? 'true' : 'false',
+    incompleto: debate.incompleto ? 'true' : 'false'
+  })), ['id', 'rondaId', 'salaId', 'ag', 'ao', 'bg', 'bo', 'publicado', 'incompleto']);
 }
 
 export async function syncResultados(resultados: Resultado[]) {
@@ -237,7 +239,8 @@ export function generarPairingsParaRonda(rondaId: string, equipos: Equipo[], sal
       ao: slice[1],
       bg: slice[2],
       bo: slice[3],
-      publicado: false
+      publicado: false,
+      incompleto: false
     });
   }
 

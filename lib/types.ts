@@ -44,6 +44,7 @@ export interface Debate {
   bg: string;
   bo: string;
   publicado: boolean;
+  incompleto: boolean;
 }
 
 export interface SpeakerScore {

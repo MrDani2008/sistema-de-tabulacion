@@ -32,7 +32,8 @@ export async function POST(req: NextRequest) {
       ao: body.ao,
       bg: body.bg,
       bo: body.bo,
-      publicado: false
+      publicado: false,
+      incompleto: false
     };
     const data = await loadAllData(['debates']);
     const debates = [nuevo, ...data.debates];

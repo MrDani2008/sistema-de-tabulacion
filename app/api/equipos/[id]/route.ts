@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { loadAllData, syncEquipos, syncOradores } from '@/lib/tournament';
+import { loadAllData, syncEquipos, syncOradores, syncDebates } from '@/lib/tournament';
 import { jsonResponse, errorResponse } from '@/lib/apiUtils';
 import { requireSession } from '@/lib/auth';
 
@@ -39,20 +39,33 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
   if (!auth.ok) return errorResponse(auth.message, auth.status);
   try {
     const { id } = params;
-    const data = await loadAllData(['equipos', 'debates', 'rondas', 'oradores']);
+    const data = await loadAllData(['equipos', 'debates', 'oradores']);
     const equipo = data.equipos.find((e) => e.id === id);
     if (!equipo) return errorResponse('Equipo no encontrado', 404);
-
-    const debateEnUso = data.debates.some((d) => d.ag === id || d.ao === id || d.bg === id || d.bo === id);
-    if (debateEnUso) {
-      return errorResponse('No se puede eliminar el equipo porque está asignado a un debate', 400);
-    }
 
     const equiposFiltrados = data.equipos.filter((e) => e.id !== id);
     const oradoresFiltrados = data.oradores.filter((o) => o.equipoId !== id);
 
+    const debatesActualizados = data.debates.map((debate) => {
+      const positions = [debate.ag, debate.ao, debate.bg, debate.bo];
+      const wasAssigned = positions.includes(id);
+      if (!wasAssigned) return debate;
+
+      const cleared = {
+        ...debate,
+        ag: debate.ag === id ? '' : debate.ag,
+        ao: debate.ao === id ? '' : debate.ao,
+        bg: debate.bg === id ? '' : debate.bg,
+        bo: debate.bo === id ? '' : debate.bo
+      };
+      const remainingTeams = [cleared.ag, cleared.ao, cleared.bg, cleared.bo].filter(Boolean).length;
+      cleared.incompleto = remainingTeams < 4;
+      return cleared;
+    });
+
     await syncEquipos(equiposFiltrados);
     await syncOradores(oradoresFiltrados);
+    await syncDebates(debatesActualizados);
     return jsonResponse({ success: true });
   } catch (error: any) {
     return errorResponse(error?.message || 'Error al eliminar equipo');

@@ -6,7 +6,7 @@ const requiredSheets = [
   { title: 'Oradores', headers: ['id', 'nombre', 'equipoId'] },
   { title: 'Salas', headers: ['id', 'nombre'] },
   { title: 'Rondas', headers: ['id', 'nombre', 'numero', 'estado', 'fecha', 'abiertaEn'] },
-  { title: 'Debates', headers: ['id', 'rondaId', 'salaId', 'ag', 'ao', 'bg', 'bo', 'publicado'] },
+  { title: 'Debates', headers: ['id', 'rondaId', 'salaId', 'ag', 'ao', 'bg', 'bo', 'publicado', 'incompleto'] },
   { title: 'Resultados', headers: ['id', 'debateId', 'equipoId', 'puntuacion', 'speakerScores', 'comentarios', 'confirmado'] },
   { title: 'ClasificacionGeneral', headers: ['equipoId', 'nombreEquipo', 'puntos', 'victorias', 'total', 'rondasJugadas'] },
   { title: 'ClasificacionOradores', headers: ['oradorId', 'nombreOrador', 'equipoId', 'puntos', 'debates'] }
