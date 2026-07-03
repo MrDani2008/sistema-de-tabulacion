@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 interface ScoreForm {
   puntuacion: number;
@@ -22,28 +22,12 @@ export default function DebateScoringForm({ debate, equipos, oradores, resultado
   const [saving, setSaving] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
 
-  function getEquipoNombre(equipoId: string) {
-    return equipos.find((e) => e.id === equipoId)?.nombre || equipoId;
-  }
-
-  function getOradoresForEquipo(equipoId: string) {
-    return oradores.filter((o) => o.equipoId === equipoId);
-  }
-
-  function getResultado(equipoId: string) {
-    return resultados.find((r) => r.debateId === debate.id && r.equipoId === equipoId);
-  }
-
-  function getDebateTeamIds() {
-    return [debate.ag, debate.ao, debate.bg, debate.bo].filter(Boolean);
-  }
-
-  function initForms() {
-    const teamIds = getDebateTeamIds();
+  useEffect(() => {
+    const teamIds = [debate.ag, debate.ao, debate.bg, debate.bo].filter(Boolean);
     const forms: Record<string, ScoreForm> = {};
     for (const equipoId of teamIds) {
-      const existing = getResultado(equipoId);
-      const oradoresEquipo = getOradoresForEquipo(equipoId);
+      const existing = resultados.find((r) => r.debateId === debate.id && r.equipoId === equipoId);
+      const oradoresEquipo = oradores.filter((o) => o.equipoId === equipoId);
       forms[equipoId] = {
         puntuacion: existing?.puntuacion || 0,
         speakerScores: oradoresEquipo.map((o) => {
@@ -55,6 +39,15 @@ export default function DebateScoringForm({ debate, equipos, oradores, resultado
     }
     setScoreForms(forms);
     setValidationError(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debate.id]);
+
+  function getEquipoNombre(equipoId: string) {
+    return equipos.find((e) => e.id === equipoId)?.nombre || equipoId;
+  }
+
+  function getDebateTeamIds() {
+    return [debate.ag, debate.ao, debate.bg, debate.bo].filter(Boolean);
   }
 
   function updateScoreForm(equipoId: string, field: string, value: any) {
@@ -96,7 +89,7 @@ export default function DebateScoringForm({ debate, equipos, oradores, resultado
     setValidationError(null);
     try {
       for (const [equipoId, form] of Object.entries(scoreForms)) {
-        const existing = getResultado(equipoId);
+        const existing = resultados.find((r) => r.debateId === debate.id && r.equipoId === equipoId);
         const payload = {
           debateId: debate.id,
           equipoId,
