@@ -291,15 +291,24 @@ export function calcularClasificaciones(data: TournamentData): { rankingEquipos:
     });
 
     for (const resultado of resultados) {
-      const oradores = data.equipos.find((equipo) => equipo.id === resultado.equipoId)?.oradores || [];
-      oradores.forEach((nombreOrador) => {
-        const orador = data.oradores.find((item) => item.nombre === nombreOrador && item.equipoId === resultado.equipoId);
-        if (!orador) return;
-        const oradorRank = rankingOradorMap.get(orador.id);
-        if (!oradorRank) return;
-        oradorRank.puntos += resultado.puntuacion / Math.max(oradores.length, 1);
-        oradorRank.debates += 1;
-      });
+      if (resultado.speakerScores && resultado.speakerScores.length > 0) {
+        for (const speakerScore of resultado.speakerScores) {
+          const oradorRank = rankingOradorMap.get(speakerScore.oradorId);
+          if (!oradorRank) continue;
+          oradorRank.puntos += speakerScore.puntuacion;
+          oradorRank.debates += 1;
+        }
+      } else {
+        const oradores = data.equipos.find((equipo) => equipo.id === resultado.equipoId)?.oradores || [];
+        oradores.forEach((nombreOrador) => {
+          const orador = data.oradores.find((item) => item.nombre === nombreOrador && item.equipoId === resultado.equipoId);
+          if (!orador) return;
+          const oradorRank = rankingOradorMap.get(orador.id);
+          if (!oradorRank) return;
+          oradorRank.puntos += resultado.puntuacion / Math.max(oradores.length, 1);
+          oradorRank.debates += 1;
+        });
+      }
     }
   }
 
