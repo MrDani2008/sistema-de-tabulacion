@@ -8,6 +8,7 @@ const navItems = [
   { href: '/rondas', label: 'Rondas' },
   { href: '/salas', label: 'Salas' },
   { href: '/pairings', label: 'Pairings' },
+  { href: '/calificaciones', label: 'Calificaciones' },
   { href: '/resultados', label: 'Resultados' },
   { href: '/ranking', label: 'Ranking General' },
   { href: '/configuracion', label: 'Configuración' }

@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
       puntuacion: Number(body.puntuacion),
       speakerScores: body.speakerScores || [],
       comentarios: body.comentarios || '',
-      confirmado: false
+      confirmado: body.confirmado ?? false
     };
     const data = await loadAllData(['resultados']);
     const resultados = [nuevo, ...data.resultados];
