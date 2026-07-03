@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { loadAllData, syncRondas } from '@/lib/tournament';
+import { loadAllData, syncRondas, syncDebates, syncResultados } from '@/lib/tournament';
 import { jsonResponse, errorResponse } from '@/lib/apiUtils';
 import { requireSession } from '@/lib/auth';
 
@@ -39,9 +39,18 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
   if (!auth.ok) return errorResponse(auth.message, auth.status);
   try {
     const { id } = params;
-    const data = await loadAllData(['rondas']);
-    const rondas = data.rondas.filter((r) => r.id !== id);
-    await syncRondas(rondas);
+    const data = await loadAllData(['rondas', 'debates', 'resultados']);
+    const ronda = data.rondas.find((r) => r.id === id);
+    if (!ronda) return errorResponse('Ronda no encontrada', 404);
+
+    const debateIds = new Set(data.debates.filter((d) => d.rondaId === id).map((d) => d.id));
+    const rondasFiltradas = data.rondas.filter((r) => r.id !== id);
+    const debatesFiltrados = data.debates.filter((d) => d.rondaId !== id);
+    const resultadosFiltrados = data.resultados.filter((r) => !debateIds.has(r.debateId));
+
+    await syncRondas(rondasFiltradas);
+    await syncDebates(debatesFiltrados);
+    await syncResultados(resultadosFiltrados);
     return jsonResponse({ success: true });
   } catch (error: any) {
     return errorResponse(error?.message || 'Error al eliminar ronda');
